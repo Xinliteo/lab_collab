@@ -2,38 +2,66 @@ import tkinter as tk
 from tkinter import messagebox
 import clips
 
-# Create CLIPS environment
 env = clips.Environment()
 
-# Add rules (minimum 2 rules)
+# Template for diagnosis
+env.build("""
+(deftemplate diagnosis
+    (slot result)
+)
+""")
+
+# Rule 1: High risk (fever AND cough)
 env.build("""
 (defrule covid-high-risk
     (symptom fever)
     (symptom cough)
     =>
-    (assert (diagnosis "High possibility of Covid-19")))
+    (assert (diagnosis (result "High risk: Fever + Cough detected. High possibility of Covid-19.")))
+)
 """)
 
+# Rule 2: Medium risk (fever only)
+env.build("""
+(defrule covid-medium-risk
+    (symptom fever)
+    (not (symptom cough))
+    =>
+    (assert (diagnosis (result "Medium risk: Fever detected. Possible infection.")))
+)
+""")
+
+# Rule 3: Mild risk (cough only)
+env.build("""
+(defrule covid-mild-risk
+    (symptom cough)
+    (not (symptom fever))
+    =>
+    (assert (diagnosis (result "Mild risk: Cough detected. Mild respiratory symptoms.")))
+)
+""")
+
+# Rule 4: Low risk (no symptoms)
 env.build("""
 (defrule covid-low-risk
     (symptom none)
     =>
-    (assert (diagnosis "Low risk of Covid-19")))
+    (assert (diagnosis (result "Low risk: No symptoms detected.")))
+)
 """)
 
 def run_diagnosis(symptoms):
     env.reset()
 
-    # Insert symptoms into CLIPS
     for s in symptoms:
         env.assert_string(f"(symptom {s})")
 
     env.run()
 
-    # Extract diagnosis
+    # Read diagnosis fact
     for fact in env.facts():
         if fact.template.name == "diagnosis":
-            return fact.slots["slot1"]
+            return fact["result"]
 
     return "No diagnosis found."
 
@@ -43,7 +71,6 @@ def submit():
 
     if fever_var.get() == 1:
         symptoms.append("fever")
-
     if cough_var.get() == 1:
         symptoms.append("cough")
 
@@ -53,13 +80,11 @@ def submit():
     result = run_diagnosis(symptoms)
     messagebox.showinfo("Diagnosis Result", result)
 
-# Window
 root = tk.Tk()
 root.title("Covid-19 Expert System")
 root.geometry("350x250")
 
-title = tk.Label(root, text="Covid-19 Diagnosis System", font=("Arial", 14))
-title.pack(pady=10)
+tk.Label(root, text="Covid-19 Diagnosis System", font=("Arial", 14)).pack(pady=10)
 
 fever_var = tk.IntVar()
 cough_var = tk.IntVar()
